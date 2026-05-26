@@ -77,7 +77,19 @@
       const R = 400;
       const fontSize = 80;
       const topOffset = 10;
+      const tickSizes = { large: [4, 20], medium: [2, 8], small: [1, 6] };
       const angleSpace = 360 / 24;
+      const ticks = [
+        { size: "large", angle: -(4 * angleSpace) / 4 },
+        { size: "small", angle: -(3 * angleSpace) / 4 },
+        { size: "medium", angle: -(2 * angleSpace) / 4 },
+        { size: "small", angle: -angleSpace / 4 },
+        { size: "large", angle: 0 },
+        { size: "small", angle: angleSpace / 4 },
+        { size: "medium", angle: (2 * angleSpace) / 4 },
+        { size: "small", angle: (3 * angleSpace) / 4 },
+        { size: "large", angle: (4 * angleSpace) / 4 },
+      ];
 
       const canvas = document.getElementById("myCanvas");
       const ctx = canvas.getContext("2d");
@@ -105,9 +117,11 @@
         ctx.restore();
       }
 
-      function angleToCoordinates(angle) {
-        const x = origin.x + R * Math.cos((angle * Math.PI) / 180);
-        const y = origin.y + R * Math.sin((angle * Math.PI) / 180);
+      function angleToCoordinates(angle, radiusOffset = 0) {
+        const x =
+          origin.x + (R + radiusOffset) * Math.cos((angle * Math.PI) / 180);
+        const y =
+          origin.y + (R + radiusOffset) * Math.sin((angle * Math.PI) / 180);
         return { x, y };
       }
 
@@ -128,6 +142,23 @@
         return { value, shift };
       }
 
+      function drawTick(size, angle) {
+        const _size = tickSizes[size];
+        const { x, y } = angleToCoordinates(angle, -60);
+        console.log("🚀 ~ drawTick ~ x, y:", x, y);
+
+        ctx.save();
+        ctx.fillStyle = "black";
+        ctx.fillRect(x - _size[0] / 2, y - _size[1] / 2, _size[0], _size[1]);
+        ctx.rotate(angle);
+        ctx.restore();
+      }
+      function drawTicks(shift) {
+        for (const tick of ticks) {
+          drawTick(tick.size, 90 + tick.angle + shift);
+        }
+      }
+
       function updateNumber() {
         drawBackground();
         const inputVal = parseFloat(
@@ -146,6 +177,8 @@
         // Numero precedente e successivo con logica circolare
         drawAngledText(wrap(value + 1), baseAngle - angleSpace);
         drawAngledText(wrap(value - 1), baseAngle + angleSpace);
+
+        drawTicks(shift);
       }
 
       updateNumber();
