@@ -80,15 +80,23 @@
       const tickSizes = { large: [4, 20], medium: [2, 8], small: [1, 6] };
       const angleSpace = 360 / 24;
       const ticks = [
+        { size: "large", angle: -(6 * angleSpace) / 4 },
+        { size: "small", angle: -(5 * angleSpace) / 4 },
+
         { size: "large", angle: -(4 * angleSpace) / 4 },
         { size: "small", angle: -(3 * angleSpace) / 4 },
         { size: "medium", angle: -(2 * angleSpace) / 4 },
         { size: "small", angle: -angleSpace / 4 },
+
         { size: "large", angle: 0 },
+
         { size: "small", angle: angleSpace / 4 },
         { size: "medium", angle: (2 * angleSpace) / 4 },
         { size: "small", angle: (3 * angleSpace) / 4 },
         { size: "large", angle: (4 * angleSpace) / 4 },
+
+        { size: "small", angle: (5 * angleSpace) / 4 },
+        { size: "large", angle: (6 * angleSpace) / 4 },
       ];
 
       const canvas = document.getElementById("myCanvas");
@@ -144,13 +152,19 @@
 
       function drawTick(size, angle) {
         const _size = tickSizes[size];
-        const { x, y } = angleToCoordinates(angle, -60);
-        console.log("🚀 ~ drawTick ~ x, y:", x, y);
+        const { x, y } = angleToCoordinates(angle, -65 + _size[1] / 2);
 
         ctx.save();
+
+        ctx.translate(x, y);
+
+        // +90°
+        ctx.rotate(((angle + 90) * Math.PI) / 180);
+
         ctx.fillStyle = "black";
-        ctx.fillRect(x - _size[0] / 2, y - _size[1] / 2, _size[0], _size[1]);
-        ctx.rotate(angle);
+
+        ctx.fillRect(-_size[0] / 2, -_size[1] / 2, _size[0], _size[1]);
+
         ctx.restore();
       }
       function drawTicks(shift) {
