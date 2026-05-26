@@ -80,7 +80,8 @@
       const tickSizes = { large: [4, 20], medium: [2, 14], small: [2, 6] };
       const angleSpace = 360 / 24;
       const ticks = [
-        { size: "large", angle: -(6 * angleSpace) / 4 },
+        { size: "small", angle: -(7 * angleSpace) / 4 },
+        { size: "medium", angle: -(6 * angleSpace) / 4 },
         { size: "small", angle: -(5 * angleSpace) / 4 },
 
         { size: "large", angle: -(4 * angleSpace) / 4 },
@@ -96,7 +97,8 @@
         { size: "large", angle: (4 * angleSpace) / 4 },
 
         { size: "small", angle: (5 * angleSpace) / 4 },
-        { size: "large", angle: (6 * angleSpace) / 4 },
+        { size: "medium", angle: (6 * angleSpace) / 4 },
+        { size: "small", angle: (7 * angleSpace) / 4 },
       ];
 
       const canvas = document.getElementById("myCanvas");
