@@ -46,8 +46,14 @@
         justify-content: center;
         align-items: center;
       }
+
+      #numberDisplay {
+        color: white;
+        font-family: Arial, sans-serif;
+        font-size: 24px;
+        font-weight: bold;
+      }
     </style>
-    <base target="_blank" />
   </head>
   <body>
     <div class="container">
@@ -64,33 +70,38 @@
         step="0.25"
         oninput="updateNumber()"
       />
+      <div id="numberDisplay">0</div>
     </div>
+
     <script>
       const R = 400;
       const fontSize = 80;
       const topOffset = 10;
-
       const angleSpace = 360 / 24;
 
       const canvas = document.getElementById("myCanvas");
       const ctx = canvas.getContext("2d");
+      const display = document.getElementById("numberDisplay");
+
       const origin = {
         x: canvas.width / 2,
         y: canvas.height / 2 - R + topOffset,
       };
 
+      // Funzione per gestire il modulo ciclico (0-23)
+      function wrap(n) {
+        return ((n % 24) + 24) % 24;
+      }
+
       function drawText(text, x, y, r = 0) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(r);
-
-        // Testo
         ctx.fillStyle = "black";
         ctx.font = fontSize + "px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(text, 0, 0);
-
         ctx.restore();
       }
 
@@ -106,40 +117,37 @@
       }
 
       function drawBackground() {
-        // Sfondo bianco
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      function drawTestSquare(x, y) {
-        const size = 10;
-        ctx.fillStyle = "red";
-        ctx.fillRect(x - size / 2, y - size / 2, size, size);
-      }
       function getIntAndShift(number) {
         const value = Math.round(number);
         const decimal = number - value;
         const shift = decimal * angleSpace;
-
         return { value, shift };
       }
 
       function updateNumber() {
         drawBackground();
-        const number = parseFloat(
+        const inputVal = parseFloat(
           document.getElementById("currentNumber").value,
         );
 
-        const { value, shift } = getIntAndShift(number);
+        // Aggiorna il testo sotto lo slider
+        display.innerText = inputVal.toFixed(2);
+
+        const { value, shift } = getIntAndShift(inputVal);
         let baseAngle = 90 + shift;
 
-        drawAngledText(value, baseAngle);
+        // Numero centrale (con wrap)
+        drawAngledText(wrap(value), baseAngle);
 
-        const previoursNumber = value + 1;
-        const nextNumber = value - 1;
-        drawAngledText(previoursNumber, baseAngle - angleSpace);
-        drawAngledText(nextNumber, baseAngle + angleSpace);
+        // Numero precedente e successivo con logica circolare
+        drawAngledText(wrap(value + 1), baseAngle - angleSpace);
+        drawAngledText(wrap(value - 1), baseAngle + angleSpace);
       }
+
       updateNumber();
     </script>
   </body>
