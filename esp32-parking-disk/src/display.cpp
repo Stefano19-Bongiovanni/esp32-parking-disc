@@ -3,8 +3,11 @@
 #include <SPI.h>
 #include <GxEPD2_BW.h>
 #include <Adafruit_GFX.h>
-#include <Fonts/FreeMonoBold9pt7b.h>
+#include <OswaldRegular40pt7b.h>
 #include <math.h>
+
+// Alias unico — cambia solo qui quando switching font
+static const GFXfont *const CLOCK_FONT = &Oswald_Regular40pt7b;
 
 // Prima scelta per molti 2.13" BW 122x250 con controller SSD1680
 GxEPD2_BW<GxEPD2_213_GDEY0213B74, GxEPD2_213_GDEY0213B74::HEIGHT>
@@ -105,7 +108,7 @@ static void drawAngledNumber(int number, float angleDeg)
     snprintf(buf, sizeof(buf), "%d", number);
 
     display.setTextSize(1);
-    display.setFont(&FreeMonoBold9pt7b);
+    display.setFont(CLOCK_FONT);
 
     // 1. Misura dimensioni
     int16_t tbx, tby;
@@ -126,7 +129,7 @@ static void drawAngledNumber(int number, float angleDeg)
     // 3. Usa GFXcanvas1 per disegnare il testo offline
     GFXcanvas1 canvas(bufW, bufH);
     canvas.fillScreen(GxEPD_WHITE); // sfondo bianco
-    canvas.setFont(&FreeMonoBold9pt7b);
+    canvas.setFont(CLOCK_FONT);
     canvas.setTextColor(GxEPD_BLACK);
     canvas.setCursor(-tbx + 2, -tby + 2); // offset per bounding box
     canvas.print(buf);
@@ -233,7 +236,7 @@ void initDisplay()
 
     display.setRotation(1);
     display.setTextColor(GxEPD_BLACK);
-    display.setFont(&FreeMonoBold9pt7b);
+    display.setFont(CLOCK_FONT);
 
     display.setFullWindow();
     display.firstPage();
@@ -241,14 +244,16 @@ void initDisplay()
     {
         display.fillScreen(GxEPD_WHITE);
 
-        display.setCursor(10, 30);
-        display.println("starting...");
+        const char *msg = "UwU...";
+        int16_t tbx, tby;
+        uint16_t tbw, tbh;
+        display.getTextBounds(msg, 0, 0, &tbx, &tby, &tbw, &tbh);
 
-        display.setCursor(10, 55);
-        display.println("ESP32-C3");
+        int16_t x = (display.width() - tbw) / 2 - tbx;
+        int16_t y = (display.height() - tbh) / 2 - tby;
+        display.setCursor(x, y);
+        display.print(msg);
 
-        display.setCursor(10, 80);
-        display.println("WeAct 2.13 BW");
     } while (display.nextPage());
 
     display.hibernate();
