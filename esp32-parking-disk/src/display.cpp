@@ -232,39 +232,48 @@ void initDisplay()
     Serial.println("display: init...");
 
     SPI.begin(PIN_SCL, -1, PIN_SDA, PIN_CS);
+
     display.init(115200, true, 50, false);
 
     display.setRotation(1);
     display.setTextColor(GxEPD_BLACK);
     display.setFont(CLOCK_FONT);
 
+    Serial.println("display: ready");
+}
+
+void showInitialScreen()
+{
     display.setFullWindow();
+
     display.firstPage();
     do
     {
         display.fillScreen(GxEPD_WHITE);
 
         const char *msg = "UwU...";
+
         int16_t tbx, tby;
         uint16_t tbw, tbh;
         display.getTextBounds(msg, 0, 0, &tbx, &tby, &tbw, &tbh);
 
         int16_t x = (display.width() - tbw) / 2 - tbx;
         int16_t y = (display.height() - tbh) / 2 - tby;
+
         display.setCursor(x, y);
         display.print(msg);
 
     } while (display.nextPage());
 
     display.hibernate();
-
-    Serial.println("display: done");
 }
 
 // Replica esatta di updateNumber() dal canvas HTML.
 // number: valore float 0.0–23.75 (step tipico 0.25)
 void updateNumber(float number)
 {
+    initDisplay(); // re-init per uscire da deep sleep, se necessario
+
     // Arrotonda al valore intero più vicino e calcola la frazione residua
     int value = (int)roundf(number);
     float decimal = number - (float)value;

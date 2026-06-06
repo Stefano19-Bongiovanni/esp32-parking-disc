@@ -19,7 +19,7 @@ constexpr uint8_t PIN_BUSY = 3; // BUSY
 
 // Inizializza il display e mostra un messaggio iniziale "starting..."
 void initDisplay();
-
+void showInitialScreen();
 // Renderizza il numero (0.0–23.75, step 0.25) come un arco scorrevole
 // con i numeri adiacenti e i tick marks, identico alla logica del canvas HTML.
 void updateNumber(float number);

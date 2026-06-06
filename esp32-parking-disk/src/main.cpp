@@ -5,6 +5,8 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include "display.h"
 #include "power.h"
 #include <esp_wifi.h>
@@ -20,6 +22,8 @@ static volatile float s_receivedTime = -1.0f;
 static volatile bool s_hasNewTime = false;
 static volatile bool s_bleConnected = false;
 
+static SemaphoreHandle_t s_displayMutex = nullptr;
+
 // ── Decode byte ──────────────────────────────────────
 static float decodeTimeByte(uint8_t b)
 {
@@ -27,6 +31,20 @@ static float decodeTimeByte(uint8_t b)
   uint8_t hours = (b >> 2) & 0x1F;
   const float qMap[4] = {0.0f, 25.0f, 50.0f, 75.0f};
   return (float)hours + qMap[quarters] / 100.0f;
+}
+
+// ── Wrapper thread-safe per updateNumber ─────────────
+static void safeUpdateNumber(float t)
+{
+  if (xSemaphoreTake(s_displayMutex, pdMS_TO_TICKS(5000)) == pdTRUE)
+  {
+    updateNumber(t);
+    xSemaphoreGive(s_displayMutex);
+  }
+  else
+  {
+    Serial.println("Display: timeout mutex, skip aggiornamento");
+  }
 }
 
 // ── Callbacks connessione ─────────────────────────────
@@ -52,9 +70,14 @@ class TimeCharCallbacks : public BLECharacteristicCallbacks
     std::string val = pChar->getValue();
     if (val.length() < 1)
       return;
-    s_receivedTime = decodeTimeByte((uint8_t)val[0]);
+
+    float t = decodeTimeByte((uint8_t)val[0]);
+    s_receivedTime = t;
     s_hasNewTime = true;
-    Serial.printf("BLE: ricevuto %.2f\n", s_receivedTime);
+    Serial.printf("BLE: ricevuto %.2f\n", t);
+
+    // Aggiornamento display in tempo reale, thread-safe tramite mutex
+    safeUpdateNumber(t);
   }
 };
 
@@ -88,24 +111,9 @@ static void runBLEWindow()
   {
     bool windowExpired = (millis() - start) >= (ADVERTISE_WINDOW_S * 1000UL);
 
-    if (s_bleConnected)
-    {
-      // Connesso: rimane sveglio finché non si disconnette
-      // Aggiorna display immediatamente se arrivano dati
-      if (s_hasNewTime)
-      {
-        g_currentTime = s_receivedTime;
-        s_hasNewTime = false;
-        updateNumber(g_currentTime);
-        Serial.printf("Display aggiornato → %.2f\n", g_currentTime);
-      }
-    }
-    else
-    {
-      // Non connesso: esci se la finestra è scaduta
-      if (windowExpired)
-        break;
-    }
+    // Non connesso e finestra scaduta → esci
+    if (!s_bleConnected && windowExpired)
+      break;
 
     delay(50);
   }
@@ -117,6 +125,8 @@ static void runBLEWindow()
 // ── Setup ─────────────────────────────────────────────
 void setup()
 {
+  s_displayMutex = xSemaphoreCreateMutex();
+
   setCpuFrequencyMhz(80);
   Serial.begin(115200);
 
@@ -128,17 +138,19 @@ void setup()
   if (firstBoot || !g_displayReady)
   {
     initDisplay();
+    showInitialScreen();
     g_displayReady = true;
   }
 
   runBLEWindow();
 
-  // Gestisce dati ricevuti durante la finestra (non durante connessione)
-  // quelli durante connessione sono già aggiornati dentro runBLEWindow()
+  // Fallback: dati ricevuti ma display non ancora aggiornato
+  // (es. onWrite chiamato mentre il mutex era occupato da initDisplay)
   if (s_hasNewTime)
   {
     g_currentTime = s_receivedTime;
-    updateNumber(g_currentTime);
+    s_hasNewTime = false;
+    safeUpdateNumber(g_currentTime);
   }
 
   Serial.printf("Sleep per %ds...\n", SLEEP_DURATION_S);
