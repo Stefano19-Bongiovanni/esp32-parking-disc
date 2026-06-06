@@ -1,27 +1,19 @@
 #include <Arduino.h>
 #include "display.h"
 
-// put function declarations here:
-int myFunction(int, int);
-
-void setup() {
-  // inizializza seriale per debug
+void setup()
+{
+  // USB CDC Serial (quello che vedi sul PC)
   Serial.begin(115200);
-  delay(5);
+  delay(1000); // importante! dai tempo all'host di aprire la porta
 
-  // inizializza il display (assume Serial già inizializzato)
+  Serial.println("setup: avvio del sistema...");
   initDisplay();
-
-  // esempio: uso della funzione esistente
-  int result = myFunction(2, 3);
-  (void)result;
+  Serial.println("setup: sistema avviato, inizio loop...");
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+void loop()
+{
+  Serial.println("looping...");
+  delay(2000);
 }

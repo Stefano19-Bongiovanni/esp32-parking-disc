@@ -1,53 +1,51 @@
 #include "display.h"
-#include <Arduino.h>
+
 #include <SPI.h>
+#include <GxEPD2_BW.h>
+#include <Adafruit_GFX.h>
+#include <Fonts/FreeMonoBold9pt7b.h>
+
+// Prima scelta per molti 2.13" BW 122x250 con controller SSD1680
+GxEPD2_BW<GxEPD2_213_GDEY0213B74, GxEPD2_213_GDEY0213B74::HEIGHT>
+    display(GxEPD2_213_GDEY0213B74(PIN_CS, PIN_DC, PIN_RES, PIN_BUSY));
+
+// Se questa variante non funziona sul tuo pannello, prova a sostituire
+// SOLO le due righe sopra con queste:
+//
+// GxEPD2_BW<GxEPD2_213_BN, GxEPD2_213_BN::HEIGHT>
+// display(GxEPD2_213_BN(PIN_CS, PIN_DC, PIN_RES, PIN_BUSY));
 
 void initDisplay()
 {
-    // Configuro i pin di controllo
-    pinMode(PIN_CS, OUTPUT);
-    pinMode(PIN_DC, OUTPUT);
-    pinMode(PIN_RES, OUTPUT);
-    pinMode(PIN_BUSY, INPUT);
+    Serial.println("display: init...");
 
-    digitalWrite(PIN_CS, HIGH);
-    digitalWrite(PIN_RES, HIGH);
+    // SPI esplicita sui pin reali dell'ESP32-C3 SuperMini
+    SPI.begin(PIN_SCL, -1, PIN_SDA, PIN_CS);
 
-    // Avvia SPI (usa i pin hardware di default dell'ESP32-C3)
-    SPI.begin();
+    // init serial debug della libreria; i parametri extra sono usati spesso con WeAct
+    display.init(115200, true, 50, false);
 
-    // Reset hardware del display
-    digitalWrite(PIN_RES, LOW);
-    delay(10);
-    digitalWrite(PIN_RES, HIGH);
-    delay(10);
+    display.setRotation(1);
+    display.setTextColor(GxEPD_BLACK);
+    display.setFont(&FreeMonoBold9pt7b);
 
-    // Attende che il BUSY si liberi (timeout 2s)
-    unsigned long start = millis();
-    while (digitalRead(PIN_BUSY) == HIGH && (millis() - start) < 2000) {
-        delay(10);
-    }
+    display.setFullWindow();
+    display.firstPage();
+    do
+    {
+        display.fillScreen(GxEPD_WHITE);
 
-    // Nota: per rendere testo reale sul WeAct 2.13" serve una libreria grafica
-    // (es. GxEPD2 + Adafruit_GFX). Qui inviamo un semplice blocco dati via SPI
-    // come prova; per il rendering corretto integrare la libreria desiderata.
+        display.setCursor(10, 30);
+        display.println("starting...");
 
-    SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
-    digitalWrite(PIN_CS, LOW);
+        display.setCursor(10, 55);
+        display.println("ESP32-C3");
 
-    // Invio un comando dummy (DC LOW) seguito da dati (DC HIGH)
-    digitalWrite(PIN_DC, LOW);
-    SPI.transfer((uint8_t)0x00); // comando di test (arbitrario)
+        display.setCursor(10, 80);
+        display.println("WeAct 2.13 BW");
+    } while (display.nextPage());
 
-    digitalWrite(PIN_DC, HIGH);
-    const char* msg = "starting...";
-    for (const char* p = msg; *p; ++p) {
-        SPI.transfer((uint8_t)(*p));
-    }
+    display.hibernate();
 
-    digitalWrite(PIN_CS, HIGH);
-    SPI.endTransaction();
-
-    // Stampare su Serial presuppone che Serial sia inizializzata dal chiamante
-    Serial.println("display: messaggio inviato (per visualizzare testo usare una libreria e-paper)");
+    Serial.println("display: done");
 }
