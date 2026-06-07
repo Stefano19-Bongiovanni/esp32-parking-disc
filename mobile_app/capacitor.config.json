@@ -1,0 +1,5 @@
+{
+  "appId": "it.stefano19.esp32ParkingDisk",
+  "appName": "Esp32 Parking Disk",
+  "webDir": "dist"
+}
