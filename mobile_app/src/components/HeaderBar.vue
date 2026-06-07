@@ -1,9 +1,9 @@
 <script setup>
-import { useRouter } from 'vue-router';
+import { useRouter } from "vue-router";
 
 const props = defineProps({
-  title: { type: String, default: '' },
-  showBackButton: { type: Boolean, default: false }
+  title: { type: String, default: "" },
+  showBackButton: { type: Boolean, default: false },
 });
 
 const router = useRouter();
@@ -12,7 +12,7 @@ const goBack = () => {
   if (window.history.length > 1) {
     router.back();
   } else {
-    router.push('/');
+    router.push("/");
   }
 };
 </script>

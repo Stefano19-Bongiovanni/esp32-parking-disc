@@ -1,11 +1,11 @@
 <script setup>
 const props = defineProps({
-  label: { type: String, required: true }
+  label: { type: String, required: true },
 });
-const emit = defineEmits(['click']);
+const emit = defineEmits(["click"]);
 
 const handleClick = (event) => {
-  emit('click', event);
+  emit("click", event);
 };
 </script>
 
@@ -28,7 +28,9 @@ const handleClick = (event) => {
   color: var(--color-button-text);
   box-shadow: var(--color-shadow);
   cursor: pointer;
-  transition: transform 0.2s ease, filter 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
 }
 
 .primary:hover {

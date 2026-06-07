@@ -1,11 +1,11 @@
 <script setup>
-import { useRouter } from 'vue-router';
-import HeaderBar from '@/components/HeaderBar.vue';
-import PrimaryButton from '@/components/PrimaryButton.vue';
+import { useRouter } from "vue-router";
+import HeaderBar from "@/components/HeaderBar.vue";
+import PrimaryButton from "@/components/PrimaryButton.vue";
 
 const router = useRouter();
-const goToParking = () => router.push('/parking-disk');
-const goToDraw = () => router.push('/draw');
+const goToParking = () => router.push("/parking-disk");
+const goToDraw = () => router.push("/draw");
 </script>
 
 <template>
