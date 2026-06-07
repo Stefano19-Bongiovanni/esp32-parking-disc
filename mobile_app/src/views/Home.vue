@@ -14,7 +14,7 @@ const toggleConnection = async () => {
   if (bleStore.connectedDevice) {
     await bleStore.DISCONNECT();
   } else if (!bleStore.isScanning) {
-    await bleStore.START_SCANNING(10000, true);
+    await bleStore.START_SCANNING(40000, true);
   }
 };
 

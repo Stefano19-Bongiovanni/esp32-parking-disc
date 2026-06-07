@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { BleClient } from "@capacitor-community/bluetooth-le";
 
-export const BLE_SERVICE_UUID = "12345678-1234-1234-1234-123456789abc";
+export const BLE_SERVICE_UUID = "12345678-1234-1234-1234-123456789ABC";
 export const BLE_CHARACTERISTIC_UUID = "12345678-1234-1234-1234-123456789def";
 
 const defaultState = () => {
@@ -13,15 +13,20 @@ const defaultState = () => {
 };
 
 function normalizeScanResult(result) {
+  // Cerca il deviceId sia a livello nativo/diretto che dentro l'oggetto .device
+  const deviceId = result.deviceId || result.device?.deviceId;
+  // Fa la stessa cosa per il nome del dispositivo
+  const name =
+    result.name || result.device?.name || result.localName || "Unknown device";
+
   return {
-    deviceId: result.deviceId,
-    name: result.name || result.localName || "Unknown device",
+    deviceId: deviceId,
+    name: name,
     rssi: typeof result.rssi === "number" ? result.rssi : null,
     uuids: result.uuids ?? result.serviceUuids ?? [],
     raw: result,
   };
 }
-
 export const useBleStore = defineStore("ble", {
   state: defaultState,
   actions: {
@@ -37,8 +42,11 @@ export const useBleStore = defineStore("ble", {
       let autoConnecting = false;
 
       const addOrUpdate = async (result) => {
-        if (!result?.deviceId) {
-          return;
+        // Estrai il deviceId corretto prima del controllo
+        const deviceId = result?.deviceId || result?.device?.deviceId;
+
+        if (!deviceId) {
+          return; // Salta solo se manca davvero in entrambi i posti
         }
 
         const device = normalizeScanResult(result);
@@ -52,7 +60,7 @@ export const useBleStore = defineStore("ble", {
           this.devices.push(device);
         }
 
-        // Appena trovato il primo dispositivo, ferma la scan e connettiti
+        // Il resto della funzione autoConnect rimane identico...
         if (autoConnect && !autoConnecting && !this.connectedDevice) {
           autoConnecting = true;
           try {

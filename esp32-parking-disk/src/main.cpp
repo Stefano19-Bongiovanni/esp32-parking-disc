@@ -101,7 +101,7 @@ static void runBLEWindow()
   pAdv->addServiceUUID(BLE_SERVICE_UUID);
   pAdv->setMinInterval(800);  // 800 * 0.625ms = 500ms
   pAdv->setMaxInterval(1600); // 1600 * 0.625ms = 1000ms
-  pAdv->setScanResponse(false);
+  pAdv->setScanResponse(true);
   BLEDevice::startAdvertising();
 
   Serial.println("BLE: advertising...");
