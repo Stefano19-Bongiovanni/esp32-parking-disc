@@ -45,6 +45,8 @@ const goBack = () => {
   position: sticky;
   top: 0;
   z-index: 10;
+
+  padding-top: calc(var(--safe-area-inset-top) + 16px);
 }
 
 .back-button {

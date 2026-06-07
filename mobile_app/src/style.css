@@ -8,6 +8,11 @@
   --color-button: #6c3a5c;
   --color-button-text: #ffffff;
   --color-shadow: 0 18px 40px rgba(108, 58, 92, 0.18);
+
+  --safe-area-inset-top: 0px;
+  --safe-area-inset-right: 0px;
+  --safe-area-inset-bottom: 0px;
+  --safe-area-inset-left: 0px;
 }
 
 * {
