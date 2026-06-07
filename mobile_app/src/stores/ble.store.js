@@ -9,6 +9,7 @@ const defaultState = () => {
     devices: [],
     connectedDevice: null,
     isScanning: false,
+    isConnecting: false, // NUOVA VARIABILE DI STATO
   };
 };
 
@@ -27,6 +28,7 @@ function normalizeScanResult(result) {
     raw: result,
   };
 }
+
 export const useBleStore = defineStore("ble", {
   state: defaultState,
   actions: {
@@ -60,7 +62,6 @@ export const useBleStore = defineStore("ble", {
           this.devices.push(device);
         }
 
-        // Il resto della funzione autoConnect rimane identico...
         if (autoConnect && !autoConnecting && !this.connectedDevice) {
           autoConnecting = true;
           try {
@@ -119,6 +120,7 @@ export const useBleStore = defineStore("ble", {
     },
 
     async CONNECT(deviceId) {
+      this.isConnecting = true; // INIZIO CONNESSIONE
       try {
         await BleClient.connect(deviceId, (disconnectedDeviceId) => {
           console.warn("BLE device disconnected:", disconnectedDeviceId);
@@ -134,6 +136,8 @@ export const useBleStore = defineStore("ble", {
       } catch (error) {
         console.error("CONNECT error:", error);
         this.connectedDevice = null;
+      } finally {
+        this.isConnecting = false; // FINE CONNESSIONE (successo o errore)
       }
     },
 

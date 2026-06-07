@@ -20,6 +20,8 @@ const toggleConnection = async () => {
 
 const isConnected = computed(() => !!bleStore.connectedDevice);
 const isScanning = computed(() => bleStore.isScanning);
+const isConnecting = computed(() => bleStore.isConnecting);
+
 const deviceName = computed(
   () => bleStore.connectedDevice?.name || "Dispositivo",
 );
@@ -37,6 +39,11 @@ const deviceName = computed(
           <p v-if="isConnected" class="status text-success" key="connected">
             <span class="dot pulse-green"></span> Connesso a {{ deviceName }}
           </p>
+          <!-- NUOVO STATO: In connessione -->
+          <p v-else-if="isConnecting" class="status text-info" key="connecting">
+            <span class="dot pulse-blue"></span> Dispositivo trovato,
+            connessione...
+          </p>
           <p v-else-if="isScanning" class="status text-warning" key="scanning">
             <span class="dot pulse-yellow"></span> Ricerca dispositivo...
           </p>
@@ -46,6 +53,7 @@ const deviceName = computed(
         </transition>
       </div>
 
+      <!-- STREAMING_CHUNK:Interactive area with the Big Button states... -->
       <!-- Area Interattiva Centrale (Dimensione fissa in cui avviene la magia) -->
       <div class="interactive-area">
         <transition name="spring" mode="out-in">
@@ -53,8 +61,12 @@ const deviceName = computed(
           <button
             v-if="!isConnected"
             class="hero-btn connect-btn"
-            :class="{ 'is-scanning': isScanning }"
+            :class="{
+              'is-scanning': isScanning,
+              'is-connecting': isConnecting,
+            }"
             @click="toggleConnection"
+            :disabled="isConnecting"
             key="connect-state"
           >
             <!-- Effetto Radar quando scansiona -->
@@ -64,8 +76,9 @@ const deviceName = computed(
             </div>
 
             <div class="hero-content">
+              <!-- Icona statica se non fa nulla -->
               <svg
-                v-if="!isScanning"
+                v-if="!isScanning && !isConnecting"
                 class="hero-icon"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -76,6 +89,7 @@ const deviceName = computed(
               >
                 <path d="M6.5 6.5l11 11L12 23V1l5.5 5.5-11 11" />
               </svg>
+              <!-- Icona che gira se scansiona o connette -->
               <svg
                 v-else
                 class="hero-icon spin"
@@ -95,11 +109,25 @@ const deviceName = computed(
                 <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
                 <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
               </svg>
-              <h2>{{ isScanning ? "RICERCA..." : "CONNETTI" }}</h2>
-              <p v-if="!isScanning">Tocca per associare il dispositivo</p>
+
+              <!-- Testo Dinamico -->
+              <h2>
+                {{
+                  isConnecting
+                    ? "CONNESSIONE..."
+                    : isScanning
+                      ? "RICERCA..."
+                      : "CONNETTI"
+                }}
+              </h2>
+              <p v-if="!isScanning && !isConnecting">
+                Tocca per associare il dispositivo
+              </p>
+              <p v-else-if="isConnecting">Inizializzazione in corso...</p>
             </div>
           </button>
 
+          <!-- STREAMING_CHUNK:Split buttons for Connected state... -->
           <!-- STATO 2: Pulsanti Divisi (Connesso) -->
           <div v-else class="split-actions" key="actions-state">
             <button class="hero-btn split-btn draw-btn" @click="goToDraw">
@@ -152,6 +180,7 @@ const deviceName = computed(
         </transition>
       </div>
 
+      <!-- STREAMING_CHUNK:Disconnect button and closing tags... -->
       <!-- Pulsante per disconnettersi -->
       <transition name="fade">
         <div class="bottom-actions" v-if="isConnected">

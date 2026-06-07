@@ -52,7 +52,7 @@ const goBack = () => {
 .back-button {
   position: absolute;
   left: 0;
-  top: 50%;
+  top: calc(var(--safe-area-inset-top) + 23%);
   transform: translateY(-50%);
   background: transparent;
   border: none;
