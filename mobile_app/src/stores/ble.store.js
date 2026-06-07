@@ -25,7 +25,7 @@ function normalizeScanResult(result) {
 export const useBleStore = defineStore("ble", {
   state: defaultState,
   actions: {
-    async START_SCANNING(scanTimeoutMs = 10000) {
+    async START_SCANNING(scanTimeoutMs = 10000, autoConnect = false) {
       if (this.isScanning) {
         return;
       }
@@ -33,7 +33,10 @@ export const useBleStore = defineStore("ble", {
       this.devices = [];
       this.isScanning = true;
 
-      const addOrUpdate = (result) => {
+      // Guard per evitare doppia connessione se arrivano più result ravvicinati
+      let autoConnecting = false;
+
+      const addOrUpdate = async (result) => {
         if (!result?.deviceId) {
           return;
         }
@@ -48,6 +51,19 @@ export const useBleStore = defineStore("ble", {
         } else {
           this.devices.push(device);
         }
+
+        // Appena trovato il primo dispositivo, ferma la scan e connettiti
+        if (autoConnect && !autoConnecting && !this.connectedDevice) {
+          autoConnecting = true;
+          try {
+            await BleClient.stopLEScan();
+          } catch (stopError) {
+            console.warn("autoConnect: error stopping scan", stopError);
+          } finally {
+            this.isScanning = false;
+          }
+          await this.CONNECT(device.deviceId);
+        }
       };
 
       try {
@@ -55,7 +71,7 @@ export const useBleStore = defineStore("ble", {
 
         await BleClient.requestLEScan(
           {
-            services: [BLE_SERVICE_UUID], // 👈 filtra per service UUID
+            services: [BLE_SERVICE_UUID],
             allowDuplicates: false,
           },
           (result) => {
@@ -91,6 +107,39 @@ export const useBleStore = defineStore("ble", {
         console.warn("STOP_SCANNING error:", error);
       } finally {
         this.isScanning = false;
+      }
+    },
+
+    async CONNECT(deviceId) {
+      try {
+        await BleClient.connect(deviceId, (disconnectedDeviceId) => {
+          console.warn("BLE device disconnected:", disconnectedDeviceId);
+          if (this.connectedDevice?.deviceId === disconnectedDeviceId) {
+            this.connectedDevice = null;
+          }
+        });
+
+        const device = this.devices.find((d) => d.deviceId === deviceId);
+        this.connectedDevice = device ?? { deviceId, name: "Unknown device" };
+
+        console.log("BLE connected to:", this.connectedDevice.name);
+      } catch (error) {
+        console.error("CONNECT error:", error);
+        this.connectedDevice = null;
+      }
+    },
+
+    async DISCONNECT() {
+      if (!this.connectedDevice) {
+        return;
+      }
+
+      try {
+        await BleClient.disconnect(this.connectedDevice.deviceId);
+      } catch (error) {
+        console.warn("DISCONNECT error:", error);
+      } finally {
+        this.connectedDevice = null;
       }
     },
   },
