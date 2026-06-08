@@ -134,8 +134,9 @@ class TimeCharCallbacks : public BLECharacteristicCallbacks
       case 0x82: // END [0x82]
         if (s_imageReceived == s_imageExpected && s_imageExpected > 0)
         {
-          s_hasNewImage = true;
           Serial.printf("BLE IMG: END OK, %u bytes\n", s_imageReceived);
+          safeDrawImage(s_imageBuf, IMAGE_BYTES); // ← disegna subito, senza aspettare disconnect
+          s_hasNewImage = false;                  // già gestito, il fallback non ridisegna
         }
         else
         {
