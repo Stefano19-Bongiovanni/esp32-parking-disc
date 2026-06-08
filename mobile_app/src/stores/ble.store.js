@@ -199,7 +199,7 @@ export const useBleStore = defineStore("ble", {
     async SEND_IMAGE(imageData) {
       if (!this.connectedDevice) {
         console.warn("SEND_IMAGE: nessun dispositivo connesso");
-        return;
+        throw new Error("SEND_IMAGE: nessun dispositivo connesso");
       }
 
       const IMAGE_WIDTH = 250;
@@ -208,10 +208,9 @@ export const useBleStore = defineStore("ble", {
       const CHUNK_DATA = 180; // byte di payload per chunk DATA
 
       if (imageData.width !== IMAGE_WIDTH || imageData.height !== IMAGE_HEIGHT) {
-        console.error(
-          `SEND_IMAGE: dimensioni errate ${imageData.width}x${imageData.height}, atteso 250x122`,
-        );
-        return;
+        const msg = `SEND_IMAGE: dimensioni errate ${imageData.width}x${imageData.height}, atteso 250x122`;
+        console.error(msg);
+        throw new Error(msg);
       }
 
       // Threshold + tight-pack: luminanza < 128 -> NERO -> bit 1, MSB-first
@@ -269,6 +268,7 @@ export const useBleStore = defineStore("ble", {
         console.log(`SEND_IMAGE: inviati ${IMAGE_BYTES} byte (${Math.ceil(IMAGE_BYTES / CHUNK_DATA)} chunk)`);
       } catch (error) {
         console.error("SEND_IMAGE error:", error);
+        throw error;
       }
     },
 
