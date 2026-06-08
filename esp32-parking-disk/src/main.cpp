@@ -14,6 +14,11 @@
 #define BLE_SERVICE_UUID "12345678-1234-1234-1234-123456789abc"
 #define BLE_CHARACTERISTIC_UUID "12345678-1234-1234-1234-123456789def"
 
+// Dimensioni immagine 1bpp trasmessa via BLE
+static constexpr uint16_t IMAGE_WIDTH = 250;
+static constexpr uint16_t IMAGE_HEIGHT = 122;
+static constexpr size_t IMAGE_BYTES = ((uint32_t)IMAGE_WIDTH * IMAGE_HEIGHT + 7) / 8; // 3813
+
 // RTC memory: sopravvive al deep sleep
 RTC_DATA_ATTR float g_currentTime = 0.0f;
 RTC_DATA_ATTR bool g_displayReady = false;
@@ -21,6 +26,12 @@ RTC_DATA_ATTR bool g_displayReady = false;
 static volatile float s_receivedTime = -1.0f;
 static volatile bool s_hasNewTime = false;
 static volatile bool s_bleConnected = false;
+
+// Buffer immagine e stato di ricezione
+static uint8_t s_imageBuf[IMAGE_BYTES];
+static size_t s_imageReceived = 0;
+static uint16_t s_imageExpected = 0;
+static volatile bool s_hasNewImage = false;
 
 static SemaphoreHandle_t s_displayMutex = nullptr;
 
@@ -44,6 +55,20 @@ static void safeUpdateNumber(float t)
   else
   {
     Serial.println("Display: timeout mutex, skip aggiornamento");
+  }
+}
+
+// ── Wrapper thread-safe per drawImage ────────────────
+static void safeDrawImage(const uint8_t *data, size_t len)
+{
+  if (xSemaphoreTake(s_displayMutex, pdMS_TO_TICKS(10000)) == pdTRUE)
+  {
+    drawImage(data, len);
+    xSemaphoreGive(s_displayMutex);
+  }
+  else
+  {
+    Serial.println("Display: timeout mutex, skip drawImage");
   }
 }
 
@@ -71,13 +96,68 @@ class TimeCharCallbacks : public BLECharacteristicCallbacks
     if (val.length() < 1)
       return;
 
-    float t = decodeTimeByte((uint8_t)val[0]);
-    s_receivedTime = t;
-    s_hasNewTime = true;
-    Serial.printf("BLE: ricevuto %.2f\n", t);
+    uint8_t firstByte = (uint8_t)val[0];
 
-    // Aggiornamento display in tempo reale, thread-safe tramite mutex
-    safeUpdateNumber(t);
+    if (firstByte & 0x80)
+    {
+      // ── Pacchetto immagine ────────────────────────
+      switch (firstByte)
+      {
+      case 0x80: // START [0x80][lenHi][lenLo]
+        if (val.length() >= 3)
+        {
+          s_imageExpected = ((uint16_t)(uint8_t)val[1] << 8) | (uint8_t)val[2];
+          s_imageReceived = 0;
+          s_hasNewImage = false;
+          memset(s_imageBuf, 0, IMAGE_BYTES);
+          Serial.printf("BLE IMG: START, expected %u bytes\n", s_imageExpected);
+        }
+        break;
+
+      case 0x81: // DATA [0x81][offHi][offLo][...payload...]
+        if (val.length() >= 4)
+        {
+          uint16_t offset = ((uint16_t)(uint8_t)val[1] << 8) | (uint8_t)val[2];
+          size_t payloadLen = val.length() - 3;
+          if ((size_t)offset + payloadLen <= IMAGE_BYTES)
+          {
+            memcpy(&s_imageBuf[offset], &val[3], payloadLen);
+            s_imageReceived += payloadLen;
+          }
+          else
+          {
+            Serial.printf("BLE IMG: DATA overflow at offset %u len %u\n", offset, (unsigned)payloadLen);
+          }
+        }
+        break;
+
+      case 0x82: // END [0x82]
+        if (s_imageReceived == s_imageExpected && s_imageExpected > 0)
+        {
+          s_hasNewImage = true;
+          Serial.printf("BLE IMG: END OK, %u bytes\n", s_imageReceived);
+        }
+        else
+        {
+          Serial.printf("BLE IMG: END mismatch received=%u expected=%u\n",
+                        (unsigned)s_imageReceived, s_imageExpected);
+        }
+        break;
+
+      default:
+        Serial.printf("BLE IMG: opcode sconosciuto 0x%02x\n", firstByte);
+        break;
+      }
+    }
+    else
+    {
+      // ── Pacchetto orario (comportamento originale) ─
+      float t = decodeTimeByte(firstByte);
+      s_receivedTime = t;
+      s_hasNewTime = true;
+      Serial.printf("BLE: ricevuto %.2f\n", t);
+      safeUpdateNumber(t);
+    }
   }
 };
 
@@ -85,6 +165,7 @@ class TimeCharCallbacks : public BLECharacteristicCallbacks
 static void runBLEWindow()
 {
   BLEDevice::init("ParkingDisk UwU");
+  BLEDevice::setMTU(247);
 
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new ServerCallbacks());
@@ -146,7 +227,12 @@ void setup()
 
   // Fallback: dati ricevuti ma display non ancora aggiornato
   // (es. onWrite chiamato mentre il mutex era occupato da initDisplay)
-  if (s_hasNewTime)
+  if (s_hasNewImage)
+  {
+    s_hasNewImage = false;
+    safeDrawImage(s_imageBuf, IMAGE_BYTES);
+  }
+  else if (s_hasNewTime)
   {
     g_currentTime = s_receivedTime;
     s_hasNewTime = false;

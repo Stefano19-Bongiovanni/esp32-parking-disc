@@ -268,6 +268,43 @@ void showInitialScreen()
     display.hibernate();
 }
 
+// Renderizza un'immagine bitmap 1bpp ricevuta via BLE.
+// Tight-packed, MSB-first: bit=1 -> pixel NERO, bit=0 -> pixel BIANCO.
+// Pixel index: i = y * IMAGE_WIDTH + x  →  byte i>>3, bit 7-(i&7).
+void drawImage(const uint8_t *data, size_t len)
+{
+    static constexpr uint16_t IMAGE_WIDTH = 250;
+    static constexpr uint16_t IMAGE_HEIGHT = 122;
+    static constexpr size_t IMAGE_BYTES = ((uint32_t)IMAGE_WIDTH * IMAGE_HEIGHT + 7) / 8; // 3813
+
+    if (!data || len < IMAGE_BYTES)
+        return;
+
+    initDisplay();
+
+    display.setFullWindow();
+    display.firstPage();
+    do
+    {
+        display.fillScreen(GxEPD_WHITE);
+
+        for (uint16_t y = 0; y < IMAGE_HEIGHT; y++)
+        {
+            for (uint16_t x = 0; x < IMAGE_WIDTH; x++)
+            {
+                uint32_t idx = (uint32_t)y * IMAGE_WIDTH + x;
+                uint8_t byte_val = data[idx >> 3];
+                uint8_t bit = (byte_val >> (7 - (idx & 7))) & 0x01;
+                if (bit)
+                    display.drawPixel(x, y, GxEPD_BLACK);
+            }
+        }
+
+    } while (display.nextPage());
+
+    display.hibernate();
+}
+
 // Replica esatta di updateNumber() dal canvas HTML.
 // number: valore float 0.0–23.75 (step tipico 0.25)
 void updateNumber(float number)

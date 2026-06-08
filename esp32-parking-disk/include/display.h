@@ -24,4 +24,9 @@ void showInitialScreen();
 // con i numeri adiacenti e i tick marks, identico alla logica del canvas HTML.
 void updateNumber(float number);
 
+// Renderizza un'immagine bitmap 1bpp 250x122 ricevuta via BLE.
+// data: tight-packed, MSB-first, indice pixel i = y*250+x, bit=1 -> NERO.
+// len deve essere esattamente IMAGE_BYTES (3813).
+void drawImage(const uint8_t *data, size_t len);
+
 #endif // DISPLAY_H

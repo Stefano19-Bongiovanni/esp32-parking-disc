@@ -190,6 +190,88 @@ export const useBleStore = defineStore("ble", {
       }
     },
 
+    /**
+     * Invia un'immagine 250x122 all'ESP32 via BLE, compressa a 1bpp tight-packed.
+     *
+     * @param {ImageData} imageData  Oggetto ImageData (o compatibile { width, height, data })
+     *                               esattamente 250x122 pixel, formato RGBA.
+     */
+    async SEND_IMAGE(imageData) {
+      if (!this.connectedDevice) {
+        console.warn("SEND_IMAGE: nessun dispositivo connesso");
+        return;
+      }
+
+      const IMAGE_WIDTH = 250;
+      const IMAGE_HEIGHT = 122;
+      const IMAGE_BYTES = Math.ceil((IMAGE_WIDTH * IMAGE_HEIGHT) / 8); // 3813
+      const CHUNK_DATA = 180; // byte di payload per chunk DATA
+
+      if (imageData.width !== IMAGE_WIDTH || imageData.height !== IMAGE_HEIGHT) {
+        console.error(
+          `SEND_IMAGE: dimensioni errate ${imageData.width}x${imageData.height}, atteso 250x122`,
+        );
+        return;
+      }
+
+      // Threshold + tight-pack: luminanza < 128 -> NERO -> bit 1, MSB-first
+      const pixels = imageData.data; // RGBA, 4 byte per pixel
+      const packed = new Uint8Array(IMAGE_BYTES);
+      for (let y = 0; y < IMAGE_HEIGHT; y++) {
+        for (let x = 0; x < IMAGE_WIDTH; x++) {
+          const src = (y * IMAGE_WIDTH + x) * 4;
+          const r = pixels[src];
+          const g = pixels[src + 1];
+          const b = pixels[src + 2];
+          const a = pixels[src + 3];
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          const isBlack = a > 0 && lum < 128;
+          if (isBlack) {
+            const idx = y * IMAGE_WIDTH + x;
+            packed[idx >> 3] |= 0x80 >> (idx & 7);
+          }
+        }
+      }
+
+      try {
+        // START
+        await BleClient.write(
+          this.connectedDevice.deviceId,
+          BLE_SERVICE_UUID,
+          BLE_CHARACTERISTIC_UUID,
+          new Uint8Array([0x80, IMAGE_BYTES >> 8, IMAGE_BYTES & 0xff]),
+        );
+
+        // DATA chunks
+        for (let offset = 0; offset < IMAGE_BYTES; offset += CHUNK_DATA) {
+          const slice = packed.slice(offset, offset + CHUNK_DATA);
+          const chunk = new Uint8Array(3 + slice.length);
+          chunk[0] = 0x81;
+          chunk[1] = offset >> 8;
+          chunk[2] = offset & 0xff;
+          chunk.set(slice, 3);
+          await BleClient.write(
+            this.connectedDevice.deviceId,
+            BLE_SERVICE_UUID,
+            BLE_CHARACTERISTIC_UUID,
+            chunk,
+          );
+        }
+
+        // END
+        await BleClient.write(
+          this.connectedDevice.deviceId,
+          BLE_SERVICE_UUID,
+          BLE_CHARACTERISTIC_UUID,
+          new Uint8Array([0x82]),
+        );
+
+        console.log(`SEND_IMAGE: inviati ${IMAGE_BYTES} byte (${Math.ceil(IMAGE_BYTES / CHUNK_DATA)} chunk)`);
+      } catch (error) {
+        console.error("SEND_IMAGE error:", error);
+      }
+    },
+
     async DISCONNECT() {
       if (!this.connectedDevice) {
         return;
